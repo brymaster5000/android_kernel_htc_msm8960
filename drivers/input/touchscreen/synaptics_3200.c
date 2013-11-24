@@ -33,6 +33,7 @@
 #include <mach/msm_hsusb.h>
 #include <asm/gpio.h>
 #include <linux/input/mt.h>
+#include <linux/pl_sensor.h>
 #include <linux/async.h>
 #include <linux/firmware.h>
 #include <linux/kthread.h>
