@@ -1054,7 +1054,7 @@ static long unix_wait_for_peer(struct sock *other, long timeo)
 	unix_state_unlock(other);
 
 	if (sched)
-		timeo = schedule_timeout(timeo);
+		timeo = freezable_schedule_timeout(timeo);
 
 	finish_wait(&u->peer_wait, &wait);
 	return timeo;
