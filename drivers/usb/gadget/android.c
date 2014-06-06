@@ -517,7 +517,7 @@ static void rmnet_function_cleanup(struct android_usb_function *f)
 static int rmnet_function_bind_config(struct android_usb_function *f,
 					 struct usb_configuration *c)
 {
-	int i;
+	int i, err = 0;
 	int err = 0;
 	char *ctrl_name;
 	char *data_name;
