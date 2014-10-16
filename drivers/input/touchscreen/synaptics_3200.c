@@ -47,11 +47,10 @@
 #define SYN_UPDATE_RETRY_TIMES 5
 #define SHIFT_BITS 10
 #define SYN_WIRELESS_DEBUG
+#define SYN_CALIBRATION_CONTROL
 
 #define SYN_FW_NAME "tp_SYN.img"
-#ifndef CONFIG_TOUCHSCREEN_SYNAPTICS_REMOVE_FW_TIMEOUT
 #define SYN_FW_TIMEOUT (30000)
-#endif
 static DEFINE_MUTEX(syn_fw_mutex);
 
 struct synaptics_ts_data {
@@ -144,7 +143,6 @@ struct synaptics_ts_data {
 	uint8_t block_touch_time_near;
 	uint8_t block_touch_time_far;
 	uint8_t block_touch_event;
-	atomic_t keypad_enable;
 };
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -1295,8 +1293,6 @@ static int synaptics_input_register(struct synaptics_ts_data *ts)
 	set_bit(KEY_APP_SWITCH, ts->input_dev->keybit);
 	set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
 
-	atomic_set(&ts->keypad_enable, 1);
-
 	printk(KERN_INFO "[TP] input_set_abs_params: mix_x %d, max_x %d, min_y %d, max_y %d\n",
 		ts->layout[0], ts->layout[1], ts->layout[2], ts->layout[3]);
 
@@ -2206,7 +2202,7 @@ static int register_sr_touch_device(void)
 	return SUCCESS;
 }
 
-/*static ssize_t get_en_sr(struct device *dev,
+static ssize_t get_en_sr(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct synaptics_ts_data *ts = gl_ts;
@@ -2222,7 +2218,7 @@ static int register_sr_touch_device(void)
 
 
 	return count;
-}*/
+}
 
 static ssize_t set_en_sr(struct device *dev, struct device_attribute *attr,
 						const char *buf, size_t count)
@@ -2237,40 +2233,7 @@ static ssize_t set_en_sr(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static DEVICE_ATTR(sr_en, S_IWUSR, 0, set_en_sr);
-
-static ssize_t keypad_enable_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct synaptics_ts_data *ts = gl_ts;
-
-	return sprintf(buf, "%d\n", atomic_read(&ts->keypad_enable));
-}
-
-static ssize_t keypad_enable_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct synaptics_ts_data *ts = gl_ts;
-
-	unsigned int val = 0;
-	sscanf(buf, "%d", &val);
-	val = (val == 0 ? 0 : 1);
-	atomic_set(&ts->keypad_enable, val);
-	if (val) {
-		set_bit(KEY_BACK, ts->input_dev->keybit);
-		set_bit(KEY_MENU, ts->input_dev->keybit);
-		set_bit(KEY_HOME, ts->input_dev->keybit);
-	} else {
-		clear_bit(KEY_BACK, ts->input_dev->keybit);
-		clear_bit(KEY_MENU, ts->input_dev->keybit);
-		clear_bit(KEY_HOME, ts->input_dev->keybit);
-	}
-	input_sync(ts->input_dev);
-
-	return count;
-}
-
-static DEVICE_ATTR(keypad_enable, S_IRUGO|S_IWUSR, keypad_enable_show, keypad_enable_store);
+static DEVICE_ATTR(sr_en, (S_IWUSR|S_IRUGO), get_en_sr, set_en_sr);
 
 static struct kobject *android_touch_kobj;
 
@@ -2298,8 +2261,7 @@ static int synaptics_touch_sysfs_init(void)
 		sysfs_create_file(android_touch_kobj, &dev_attr_pdt.attr) ||
 		sysfs_create_file(android_touch_kobj, &dev_attr_htc_event.attr) ||
 		sysfs_create_file(android_touch_kobj, &dev_attr_reset.attr) ||
-		sysfs_create_file(android_touch_kobj, &dev_attr_sr_en.attr) ||
-		sysfs_create_file(android_touch_kobj, &dev_attr_keypad_enable.attr)
+		sysfs_create_file(android_touch_kobj, &dev_attr_sr_en.attr)
 #ifdef SYN_WIRELESS_DEBUG
 		|| sysfs_create_file(android_touch_kobj, &dev_attr_enabled.attr)
 #endif
@@ -3135,10 +3097,6 @@ static void synaptics_ts_button_func(struct synaptics_ts_data *ts)
 
 	ret = i2c_syn_read(ts->client,
 		get_address_base(ts, 0x1A, DATA_BASE), &data, 1);
-	if (!atomic_read(&ts->keypad_enable)) {
-		return;
-	}
-
 	if (data) {
 		if (data & 0x01) {
 			printk("[TP] back key pressed\n");
@@ -3728,9 +3686,7 @@ static int syn_probe_init(void *arg)
 	struct synaptics_i2c_rmi_platform_data *pdata;
 	int ret = 0;
 	uint8_t data = 0, i;
-#ifndef CONFIG_TOUCHSCREEN_SYNAPTICS_REMOVE_FW_TIMEOUT
 	uint16_t wait_time = SYN_FW_TIMEOUT;
-#endif
 
 	printk(KERN_INFO "[TP] %s: enter", __func__);
 	pdata = ts->client->dev.platform_data;
@@ -3740,13 +3696,11 @@ static int syn_probe_init(void *arg)
 		goto err_get_platform_data_fail;
 	}
 
-#ifndef CONFIG_TOUCHSCREEN_SYNAPTICS_REMOVE_FW_TIMEOUT
 	if (board_build_flag() == MFG_BUILD) {
 		wait_time = SYN_FW_TIMEOUT;
 		wait_event_interruptible_timeout(ts->syn_fw_wait, atomic_read(&ts->syn_fw_condition),
 							msecs_to_jiffies(wait_time));
 	}
-#endif
 	ts->block_touch_event = 0;
 	ts->i2c_err_handler_en = pdata->i2c_err_handler_en;
 	if (ts->i2c_err_handler_en) {
@@ -4316,6 +4270,10 @@ static int synaptics_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	else if(ts->psensor_detection)
 		ts->psensor_phone_enable = 1;
 
+#ifdef CONFIG_PWRKEY_STATUS_API
+	if (ts->packrat_number < SYNAPTICS_FW_NOCAL_PACKRAT)
+		printk(KERN_INFO "[TP][PWR][STATE] get power key state = %d\n", getPowerKeyState());
+#endif
 	if (ts->disable_CBC) {
 		if (ts->package_id < 3400) {
 			ret = i2c_syn_read(ts->client,
@@ -4380,6 +4338,9 @@ static int synaptics_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 				i2c_syn_error_handler(ts, ts->i2c_err_handler_en, "sleep: 0x01", __func__);
 		} else {
 			if ((ts->psensor_status & PSENSOR_STATUS) > 0
+#ifdef CONFIG_PWRKEY_STATUS_API
+			&& getPowerKeyState() == 0
+#endif
 			 ) {
 				ret = i2c_syn_write_byte_data(client,
 					get_address_base(ts, 0x01, CONTROL_BASE), 0x02); 
