@@ -26,14 +26,10 @@
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
-#ifdef CONFIG_PWRKEY_STATUS_API
-static uint8_t power_key_state;
-static spinlock_t power_key_state_lock;
-
 #if defined(CONFIG_PWRKEY_STATUS_API) || defined(CONFIG_PWRKEY_WAKESRC_LOG)
 #include <linux/module.h>
 #endif
+
 #ifdef CONFIG_POWER_KEY_LED
 #include <linux/leds-pm8921.h>
 
@@ -57,6 +53,65 @@ struct wake_lock key_reset_clr_wake_lock;
 #ifdef CONFIG_MFD_MAX8957
 static struct workqueue_struct *ki_queue;
 #endif
+#ifdef CONFIG_HTC_WAKE_ON_VOL
+static int power_key_intr_flag;
+static DEFINE_MUTEX(wakeup_mutex);
+static unsigned char wakeup_bitmask;
+static unsigned char set_wakeup;
+static unsigned int vol_up_irq;
+static unsigned int vol_down_irq;
+static ssize_t vol_wakeup_store(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+	unsigned char bitmask = 0;
+	bitmask = simple_strtoull(buf, NULL, 10);
+	mutex_lock(&wakeup_mutex);
+	if (bitmask) {
+		if (bitmask == 127)
+			wakeup_bitmask &= bitmask;
+		else if (bitmask > 128)
+			wakeup_bitmask &= bitmask;
+		else
+			wakeup_bitmask |= bitmask;
+	}
+
+	if (wakeup_bitmask && (!set_wakeup)) {
+		enable_irq_wake(vol_up_irq);
+		enable_irq_wake(vol_down_irq);
+		set_wakeup = 1;
+		KEY_LOGI("%s:change to wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
+	} else if ((!wakeup_bitmask) && set_wakeup){
+		disable_irq_wake(vol_up_irq);
+		disable_irq_wake(vol_down_irq);
+		set_wakeup = 0;
+		KEY_LOGI("%s:change to non-wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
+	}
+	mutex_unlock(&wakeup_mutex);
+	return count;
+}
+static ssize_t vol_wakeup_show(struct device *dev,
+					struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%x\n", wakeup_bitmask);
+}
+
+static DEVICE_ATTR(vol_wakeup, 0664, vol_wakeup_show, vol_wakeup_store);
+
+#ifdef CONFIG_PWRKEY_WAKESRC_LOG
+static uint16_t power_key_gpio;
+uint16_t get_power_key_gpio(void)
+{
+	return power_key_gpio;
+}
+EXPORT_SYMBOL(get_power_key_gpio);
+#endif
+#endif /* CONFIG_HTC_WAKE_ON_VOL */
+
+#ifdef CONFIG_PWRKEY_STATUS_API
+static uint8_t power_key_state;
+static spinlock_t power_key_state_lock;
+
 #define PWRKEY_PRESS_DUE 1*HZ
 static void init_power_key_api(void)
 {
@@ -123,63 +178,8 @@ static void handle_power_key_state(unsigned int code, int value)
 		}
 	}
 }
+
 #endif
-#endif /* CONFIG_TOUCHSCREEN_SYNAPTICS_3K */
-
-#ifdef CONFIG_HTC_WAKE_ON_VOL
-static int power_key_intr_flag;
-static DEFINE_MUTEX(wakeup_mutex);
-static unsigned char wakeup_bitmask;
-static unsigned char set_wakeup;
-static unsigned int vol_up_irq;
-static unsigned int vol_down_irq;
-static ssize_t vol_wakeup_store(struct device *dev,
-					 struct device_attribute *attr,
-					 const char *buf, size_t count)
-{
-	unsigned char bitmask = 0;
-	bitmask = simple_strtoull(buf, NULL, 10);
-	mutex_lock(&wakeup_mutex);
-	if (bitmask) {
-		if (bitmask == 127)
-			wakeup_bitmask &= bitmask;
-		else if (bitmask > 128)
-			wakeup_bitmask &= bitmask;
-		else
-			wakeup_bitmask |= bitmask;
-	}
-
-	if (wakeup_bitmask && (!set_wakeup)) {
-		enable_irq_wake(vol_up_irq);
-		enable_irq_wake(vol_down_irq);
-		set_wakeup = 1;
-		KEY_LOGI("%s:change to wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
-	} else if ((!wakeup_bitmask) && set_wakeup){
-		disable_irq_wake(vol_up_irq);
-		disable_irq_wake(vol_down_irq);
-		set_wakeup = 0;
-		KEY_LOGI("%s:change to non-wake up function(%d, %d)\n", __func__, vol_up_irq, vol_down_irq);
-	}
-	mutex_unlock(&wakeup_mutex);
-	return count;
-}
-static ssize_t vol_wakeup_show(struct device *dev,
-					struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%x\n", wakeup_bitmask);
-}
-
-static DEVICE_ATTR(vol_wakeup, 0664, vol_wakeup_show, vol_wakeup_store);
-
-#ifdef CONFIG_PWRKEY_WAKESRC_LOG
-static uint16_t power_key_gpio;
-uint16_t get_power_key_gpio(void)
-{
-	return power_key_gpio;
-}
-EXPORT_SYMBOL(get_power_key_gpio);
-#endif
-#endif /* CONFIG_HTC_WAKE_ON_VOL */
 
 #ifdef CONFIG_MFD_MAX8957
 static struct workqueue_struct *ki_queue;
@@ -633,11 +633,10 @@ static enum hrtimer_restart gpio_event_input_timer_func(struct hrtimer *timer)
 #ifdef CONFIG_POWER_KEY_CLR_RESET
 		handle_power_key_reset(key_entry->code, pressed);
 #endif
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 #ifdef CONFIG_PWRKEY_STATUS_API
 		handle_power_key_state(key_entry->code, pressed);
 #endif
-#endif
+
 		input_event(ds->input_devs->dev[key_entry->dev], ds->info->type,
 			    key_entry->code, pressed);
 		sync_needed = true;
@@ -839,10 +838,8 @@ static int gpio_event_input_request_irqs(struct gpio_input_state *ds)
 		}
 #endif
 	}
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 #ifdef CONFIG_PWRKEY_STATUS_API
 	init_power_key_api();
-#endif
 #endif
 	return 0;
 
