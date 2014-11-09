@@ -108,6 +108,7 @@ EXPORT_SYMBOL(get_power_key_gpio);
 #endif
 #endif /* CONFIG_HTC_WAKE_ON_VOL */
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 #ifdef CONFIG_PWRKEY_STATUS_API
 static uint8_t power_key_state;
 static spinlock_t power_key_state_lock;
@@ -178,8 +179,8 @@ static void handle_power_key_state(unsigned int code, int value)
 		}
 	}
 }
-
 #endif
+#endif /* CONFIG_TOUCHSCREEN_SYNAPTICS_3K */
 
 #ifdef CONFIG_MFD_MAX8957
 static struct workqueue_struct *ki_queue;
@@ -633,10 +634,11 @@ static enum hrtimer_restart gpio_event_input_timer_func(struct hrtimer *timer)
 #ifdef CONFIG_POWER_KEY_CLR_RESET
 		handle_power_key_reset(key_entry->code, pressed);
 #endif
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 #ifdef CONFIG_PWRKEY_STATUS_API
 		handle_power_key_state(key_entry->code, pressed);
 #endif
-
+#endif
 		input_event(ds->input_devs->dev[key_entry->dev], ds->info->type,
 			    key_entry->code, pressed);
 		sync_needed = true;
@@ -837,16 +839,30 @@ static int gpio_event_input_request_irqs(struct gpio_input_state *ds)
 			enable_irq_wake(irq);
 		}
 #endif
+		if (ds->info->info.no_suspend) {
+			err = enable_irq_wake(irq);
+			if (err) {
+				pr_err("gpio_event_input_request_irqs: "
+					"enable_irq_wake failed for input %d, "
+					"irq %d\n",
+					ds->info->keymap[i].gpio, irq);
+				goto err_enable_irq_wake_failed;
+			}
+		}
 	}
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 #ifdef CONFIG_PWRKEY_STATUS_API
 	init_power_key_api();
+#endif
 #endif
 	return 0;
 
 	for (i = ds->info->keymap_size - 1; i >= 0; i--) {
-		free_irq(gpio_to_irq(ds->info->keymap[i].gpio),
-			 &ds->key_state[i]);
-err_request_irq_failed:
+		irq = gpio_to_irq(ds->info->keymap[i].gpio);
+		if (ds->info->info.no_suspend)
+			disable_irq_wake(irq);
+err_enable_irq_wake_failed:
+		free_irq(irq, &ds->key_state[i]);err_request_irq_failed:
 err_gpio_get_irq_num_failed:
 		;
 	}
