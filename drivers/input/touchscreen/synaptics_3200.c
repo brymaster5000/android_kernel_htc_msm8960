@@ -518,7 +518,7 @@ static int i2c_syn_read(struct i2c_client *client, uint16_t addr, uint8_t *data,
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
 		if (i2c_transfer(client->adapter, msg, 2) == 2)
 			break;
-		hr_msleep(10);
+		usleep(10);
 	}
 	mutex_unlock(&syn_mutex);
 
@@ -592,7 +592,7 @@ int i2c_rmi_read(uint16_t addr, uint8_t *data, uint16_t length)
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
 		if (i2c_transfer(ts->client->adapter, msg, 2) == 2)
 			break;
-		hr_msleep(10);
+		usleep(10);
 	}
 	mutex_unlock(&syn_mutex);
 
@@ -4381,7 +4381,7 @@ static int synaptics_ts_resume(struct i2c_client *client)
 #endif 
 	if (ts->power) {
 		ts->power(1);
-		hr_msleep(100);
+		usleep(100);
 #ifdef SYN_CABLE_CONTROL
 		if (ts->cable_support) {
 			if (usb_get_connect_type())
