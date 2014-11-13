@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Path to build your kernel
-  k=~/android/kernel/Lunar-AOSP
+  k=~/android/kernel/Elite-AOSP
 # Directory for the any kernel updater
   t=$k/packages
 # Date to add to zip

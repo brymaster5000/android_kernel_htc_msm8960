@@ -1,7 +1,7 @@
 ui_print("");
 ui_print("");
 
-ui_print("Flashing Lunar AOSP Kernel");
+ui_print("Flashing Elite AOSP Kernel");
 ui_print("By Buckmarble and Brymaster5000");
 ui_print("");
 ui_print("");
@@ -11,11 +11,12 @@ ui_print("");
 mount("ext4", "EMMC", "/dev/block/mmcblk0p35", "/system");
 ui_print("copying modules");
 delete("/system/bin/fstrim");
+delete("/system/etc/init.d/01Lunar");
 ui_print("");
 ui_print("");
 package_extract_dir("system", "/system");
 set_perm_recursive(0, 0, 0755, 0644, "/system/lib/modules");
-set_perm_recursive(0, 2000, 0777, 0777, "/system/etc/init.d/01Lunar");
+set_perm_recursive(0, 2000, 0777, 0777, "/system/etc/init.d/01Elite");
 ui_print("unmounting system");
 ui_print("");
 ui_print("");
