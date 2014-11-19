@@ -1,8 +1,8 @@
 ui_print("");
 ui_print("");
 
-ui_print("Flashing Elite AOSP Kernel");
-ui_print("By Buckmarble and Brymaster5000");
+ui_print("Flashing Elite L AOSP Kernel");
+ui_print("By Brymaster5000");
 ui_print("");
 ui_print("");
 ui_print("mounting system");
