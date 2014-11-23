@@ -201,7 +201,7 @@ static int I2C_RxData_2(char *rxData, int length)
 
 		D("[PS][cm3629 warning] %s, i2c err, ISR gpio %d\n",
 				__func__, lpi->intr_pin);
-		usleep(10);
+		msleep(10);
 	}
 
 	if (loop_i >= I2C_RETRY_COUNT) {
@@ -232,7 +232,7 @@ static int I2C_TxData(uint16_t slaveAddr, uint8_t *txData, int length)
 		D("[PS][cm3629 warning] %s, i2c err, slaveAddr 0x%x, register 0x%x, value 0x%x, ISR gpio%d, record_init_fail %d\n",
 				__func__, slaveAddr, txData[0], txData[1], lpi->intr_pin, record_init_fail);
 
-		usleep(10);
+		msleep(10);
 	}
 
 	if (loop_i >= I2C_RETRY_COUNT) {
@@ -1479,7 +1479,6 @@ static int lightsensor_update_table(struct cm3629_info *lpi)
 static int lightsensor_enable(struct cm3629_info *lpi)
 {
 	int ret = 0;
-	int delay = 0;
 	char cmd[3] = {0};
 
 	mutex_lock(&als_enable_mutex);
@@ -1499,16 +1498,10 @@ static int lightsensor_enable(struct cm3629_info *lpi)
 		"[LS][cm3629 error]%s: set auto light sensor fail\n",
 		__func__);
 	else {
-		if (sensor_chipId[0] != 0x29)
-			delay = 80;
-		else
-			delay = 50;
-
 		if (lpi->mfg_mode != MFG_MODE)
-			delay *= 2;
-
-		hr_msleep(delay);
-
+			msleep(160);
+		else
+			msleep(85);
 		input_report_abs(lpi->ls_input_dev, ABS_MISC, -1);
 		input_sync(lpi->ls_input_dev);
 		report_lsensor_input_event(lpi, 1);
@@ -2267,7 +2260,7 @@ static ssize_t ls_fLevel_store(struct device *dev,
 	input_sync(lpi->ls_input_dev);
 	printk(KERN_INFO "[LS]set fLevel = %d\n", f_cm3629_level);
 
-	hr_msleep(1000);
+	msleep(1000);
 	f_cm3629_level = -1;
 	return count;
 }
@@ -2616,15 +2609,16 @@ int psensor_enable_by_touch_driver(int on)
 	psensor_enable_by_touch = 0;
 	return 0;
 }
+
 static int cm3629_read_chip_id(struct cm3629_info *lpi)
 {
 	uint8_t chip_id[3] = {0};
 	int ret = 0;
 
 	als_power(0);
-	hr_msleep(5);
+	msleep(5);
 	als_power(1);
-	hr_msleep(5);
+	msleep(5);
 
 	ret = _cm3629_I2C_Read2(lpi->cm3629_slave_address, CH_ID, chip_id, 2);
 	if (ret >= 0) {
