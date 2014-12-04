@@ -518,7 +518,6 @@ static int rmnet_function_bind_config(struct android_usb_function *f,
 					 struct usb_configuration *c)
 {
 	int i, err = 0;
-	int err = 0;
 	char *ctrl_name;
 	char *data_name;
 	char *tname = NULL;

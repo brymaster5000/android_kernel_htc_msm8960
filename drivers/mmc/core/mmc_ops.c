@@ -537,53 +537,6 @@ int mmc_set_block_length(struct mmc_card *card, u32 length)
 	return 0;
 }
 
-int mmc_send_write_prot_type(struct mmc_card *card, void *buf, u32 address, int len)
-{
-	struct mmc_request mrq;
-	struct mmc_command cmd;
-	struct mmc_data data;
-	struct scatterlist sg;
-	void *data_buf;
-
-	data_buf = kmalloc(len, GFP_KERNEL);
-	if (data_buf == NULL)
-		return -ENOMEM;
-
-	memset(&mrq, 0, sizeof(struct mmc_request));
-	memset(&cmd, 0, sizeof(struct mmc_command));
-	memset(&data, 0, sizeof(struct mmc_data));
-
-	mrq.cmd = &cmd;
-	mrq.data = &data;
-
-	cmd.opcode = MMC_SEND_WRITE_PROT_TYPE;
-	cmd.arg = address;
-
-	cmd.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;
-
-	data.blksz = len;
-	data.blocks = 1;
-	data.flags = MMC_DATA_READ;
-	data.sg = &sg;
-	data.sg_len = 1;
-
-	sg_init_one(&sg, data_buf, len);
-
-	mmc_set_data_timeout(&data, card);
-
-	mmc_wait_for_req(card->host, &mrq);
-
-	memcpy(buf, data_buf, len);
-	kfree(data_buf);
-
-	if (cmd.error)
-		return cmd.error;
-	if (data.error)
-		return data.error;
-
-	return 0;
-}
-
 static int
 mmc_send_bus_test(struct mmc_card *card, struct mmc_host *host, u8 opcode,
 		  u8 len)
