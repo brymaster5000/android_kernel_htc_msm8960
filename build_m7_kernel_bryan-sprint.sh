@@ -13,7 +13,7 @@
 #     make clean
 
 # Setup the build
- cd $k/arch/arm/configs/BBKconfigs/Sprint
+ cd $k/arch/arm/configs/BBKconfigs
     for c in *
       do
         cd $k
