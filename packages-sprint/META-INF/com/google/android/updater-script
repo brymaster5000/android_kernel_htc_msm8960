@@ -30,5 +30,5 @@ set_perm(0, 0, 0777, "/tmp/unpackbootimg");
 run_program("/sbin/busybox", "dd", "if=/dev/block/mmcblk0p35", "of=/tmp/boot.img");
 run_program("/tmp/unpackbootimg", "-i", "/tmp/boot.img", "-o", "/tmp/");
 run_program("/tmp/mkbootimg.sh");
-run_program("/sbin/busybox", "dd", "if=/tmp/newboot.img", "of=/dev/block/mmcblk0p33");
+run_program("/sbin/busybox", "dd", "if=/tmp/newboot.img", "of=/dev/block/mmcblk0p35");
 ui_print("Done");
