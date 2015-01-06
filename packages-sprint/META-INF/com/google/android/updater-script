@@ -1,7 +1,14 @@
 ui_print("");
 ui_print("");
 
-ui_print("Welcome To Elite m7 AOSP");
+ui_print("  ____   _      _   _____   ____  ");
+ui_print(" |  __| | |    | | |_   _| |  __| ");
+ui_print(" | |__  | |    | |   | |   | |__  ");
+ui_print(" |  __| | |    | |   | |   |  __| ");
+ui_print(" | |__  | |__  | |   | |   | |__  ");
+ui_print(" |____| |____| |_|   |_|   |____| ");
+
+ui_print("Flashing Elite AOSP Kernel for Lollipop");
 ui_print("By Brymaster5000");
 ui_print("");
 ui_print("");
