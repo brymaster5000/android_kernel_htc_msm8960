@@ -335,15 +335,9 @@ static void dump_hsic_regs(struct usb_hcd *hcd)
 
 #define ULPI_IO_TIMEOUT_USEC	(10 * 1000)
 
-<<<<<<< HEAD
-#define USB_PHY_VDD_DIG_VOL_NONE	0 /*uV */
-#define USB_PHY_VDD_DIG_VOL_MIN		945000 /* uV */
-#define USB_PHY_VDD_DIG_VOL_MAX		1320000 /* uV */
-=======
 #define USB_PHY_VDD_DIG_VOL_NONE	0 
 #define USB_PHY_VDD_DIG_VOL_MIN		945000 
 #define USB_PHY_VDD_DIG_VOL_MAX		1320000 
->>>>>>> f613da9... EHCI: HSIC: Add support to vote for SVS digital voltage
 
 #define HSIC_DBG1_REG		0x38
 
