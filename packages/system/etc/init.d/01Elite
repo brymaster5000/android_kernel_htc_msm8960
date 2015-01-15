@@ -24,3 +24,34 @@ echo 400000000 > /sys/devices/platform/kgsl-3d0.0/kgsl/kgsl-3d0/gpuclk;
 echo 0 > /sys/devices/system/cpu/cpufreq/ondemand/gboost;
 echo 1 > /sys/devices/system/cpu/cpufreq/ondemand/enable_boost_cpu;
 
+#Set Button Light Notification
+echo 0 > /sys/class/leds/button-backlight/blink_buttons;
+# echo 1 > /sys/class/leds/button-backlight/blink_buttons;
+
+#Set Force Fast Charge
+echo 0 > /sys/kernel/fast_charge/force_fast_charge;
+# echo 1 > /sys/kernel/fast_charge/force_fast_charge;
+
+#Set Sweep2wake
+#for sweep2wake and sweep2sleep 
+echo 1 > /sys/android_touch/sweep2wake;
+#for just sweep2sleep
+#echo 2 > /sys/android_touch/sweep2wake;
+#to turn off
+#echo 0 > /sys/android_touch/sweep2wake;
+
+#Set Doubletap2wake
+echo 1 > /sys/android_touch/doubletap2wake;
+# echo 0 > /sys/android_touch/doubletap2wake;
+
+#Set Logo2wake
+echo 0 > /sys/android_touch/logo2wake;
+# echo 1 > /sys/android_touch/logo2wake;
+
+#Set pocket detection
+echo 1 > /sys/android_touch/pocket_detect;
+# echo 0 > /sys/android_touch/pocket_detect;
+
+#Set Logo2menu
+echo 0 > /sys/android_touch/logo2menu;
+# echo 1 > /sys/android_touch/logo2menu;
